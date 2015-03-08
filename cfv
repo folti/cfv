@@ -388,39 +388,97 @@ class Stats:
 		end.subcount = end.subcount + 1
 
 	def print_stats(self):
-		pinfo('%i files'%self.num,'')
-		pinfo(', %i OK' %self.ok,'')
-		if self.badcrc:
-			pinfo(', %i badcrc' %self.badcrc,'')
-		if self.badsize:
-			pinfo(', %i badsize' %self.badsize,'')
-		if self.notfound:
-			pinfo(', %i not found' %self.notfound,'')
-		if self.ferror:
-			pinfo(', %i file errors' %self.ferror,'')
-		if self.unverified:
-			pinfo(', %i unverified' %self.unverified,'')
-		if self.cferror:
-			pinfo(', %i chksum file errors' %self.cferror,'')
-		if self.misnamed:
-			pinfo(', %i misnamed' %self.misnamed,'')
-		if self.diffcase:
-			pinfo(', %i differing cases' %self.diffcase,'')
-		if self.quoted:
-			pinfo(', %i quoted filenames' %self.quoted,'')
-		if self.textmode:
-			pinfo(', %i tested in textmode' %self.textmode,'')
 
-		elapsed=time.time()-self.starttime
-		pinfo('.  %.3f seconds, '%(elapsed),'')
-		if elapsed==0.0:
-			pinfo('%.1fK'%(self.bytesread/1024.0),'')
+		if not config.color:
+			colorFileCount = ''
+			colorOkay = ''
+			colorBadCRC = ''
+			colorBadSize = ''
+			colorNotFound =''
+			colorFileError = ''
+			colorUnverified = ''
+			colorChksumFileError = ''
+			colorMisnamed = ''
+			colorDiffCase = ''
+			colorQuoted = ''
+			colorTextMode = ''
+			colorStats = ''
+			colorStop = ''
+
 		else:
-			pinfo('%.1fK/s'%(self.bytesread/elapsed/1024.0),'')
+			colorBlack        = '\033[22;30m '
+			colorRed          = '\033[22;31m '
+			colorGreen        = '\033[22;32m '
+			colorBrown        = '\033[22;33m '
+			colorBlue         = '\033[22;34m '
+			colorMagenta      = '\033[22;35m '
+			colorCyan         = '\033[22;36m '
+			colorGray         = '\033[22;37m '
+			colorDarkGray     = '\033[01;30m '
+			colorLightRed     = '\033[01;31m '
+			colorLightGreen   = '\033[01;32m '
+			colorYellow       = '\033[01;33m '
+			colorLightBlue    = '\033[01;34m '
+			colorLightMagenta = '\033[01;35m '
+			colorLightCyan    = '\033[01;36m '
+			colorWhite        = '\033[01;37m '
+			colorStop         = '\033[0m'
 
-		pinfo('\n','')
+			colorFileCount = ''
+			colorOkay = colorCyan
+			colorBadCRC = colorRed
+			colorBadSize = colorRed
+			colorNotFound = colorRed
+			colorFileError = colorRed
+			colorUnverified = colorRed
+			colorChksumFileError = colorRed
+			colorMisnamed = colorRed
+			colorDiffCase = colorRed
+			colorQuoted = colorBlue
+			colorTextMode = colorBlue
+			colorStats = colorBlue
 
+
+		pinfo('%s%i files%s' %(colorFileCount, self.num, colorStop),'')
+		pinfo(', %s%i OK%s' %(colorOkay, self.ok, colorStop),'')
+
+
+		if self.badcrc:
+			pinfo(', %s%i badcrc%s' %(colorBadCRC, self.badcrc, colorStop),'')
+		if self.badsize:
+			pinfo(', %s%i badsize%s' %(colorBadSize, self.badsize, colorStop),'')
+		if self.notfound:
+			pinfo(', %s%i not found%s' %(colorNotFound, self.notfound, colorStop),'')
+		if self.ferror:
+			pinfo(', %s%i file errors%s' %(colorFileError, self.ferror, colorStop),'')
+		if self.unverified:
+			pinfo(', %s%i unverified%s' %(colorUnverified, self.unverified, colorStop),'')
+		if self.cferror:
+			pinfo(', %s%i chksum file errors%s' %(colorChksumFileError, self.cferror, colorStop),'')
+		if self.misnamed:
+			pinfo(', %s%i misnamed%s' %(colorMisnamed, self.misnamed, colorStop),'')
+		if self.diffcase:
+			pinfo(', %s%i differing cases%s' %(colorDiffCase, self.diffcase, colorStop),'')
+		if self.quoted:
+			pinfo(', %s%i quoted filenames%s' %(colorQuoted, self.quoted, colorStop),'')
+		if self.textmode:
+			pinfo(', %s%i tested in textmode%s' %(colorTextMode, self.textmode, colorStop),'')
+
+		if not config.truncate:
+			elapsed=time.time()-self.starttime
+			pinfo('.  ' + colorStats + '%.3f seconds, '%(elapsed),'' + colorStop)
+			if elapsed==0.0:
+				pinfo(colorStats + '%.1fK'%(self.bytesread/1024.0),'' + colorStop)
+			else:
+				pinfo(colorStats + '%.1fK/s'%(self.bytesread/elapsed/1024.0),'' + colorStop)
+			pinfo('\n','')
+
+		else:
+			pinfo('\n','')
+				
 class Config:
+	color=0
+	truncate=0
 	verbose=0 # -1=quiet  0=norm  1=noisy
 	docrcchecks=1
 	dirsort=1
@@ -2369,6 +2427,8 @@ def printusage(err=0):
 	phelp('  -VV      don\'t print status line at end either')
 	phelp('  -q       quiet mode.  check exit code for success.')
 	phelp('  -Q       mostly quiet mode.  only prints status lines.')
+	phelp('  -c       output in color.')
+	phelp('  -cc      output in color with truncated status line')
 	phelp('  -zz      force making gzipped files, even if not ending in .gz')
 	phelp('  -z       make gzipped files in auto create mode')
 	phelp('  -Z       don\'t create gzipped files automatically. (default)')
@@ -2416,7 +2476,7 @@ def main(argv=None):
 	typename='auto'
 
 	try:
-		optlist, args = getopt.getopt(argv, 'rRlLTCt:f:mMnNsSp:uUiIvVzZqQh?',
+		optlist, args = getopt.getopt(argv, 'rRlLTCct:f:mMnNsSp:uUiIvVzZqQh?',
 				['list=', 'list0=', 'fixpaths=', 'strippaths=', 'showpaths=','renameformat=','progress=','unquote=','help','version',
 				'announceurl=','piece_size_pow2=','private_torrent','noprivate_torrent', #torrent options
 				])
@@ -2445,6 +2505,10 @@ def main(argv=None):
 		for o,a in optlist:
 			if o=='-T':
 				mode=0
+			elif o=='-c':
+				config.color=1
+				if prevopt=='-c':
+					config.truncate=1
 			elif o=='-C':
 				mode=1
 			elif o=='-t':
