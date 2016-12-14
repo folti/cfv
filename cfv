@@ -1305,15 +1305,6 @@ def do_f_ok(filename, filesize, filecrct, msg="OK", l_filename=None):
         pverbose('%s : %s (%s)' % (perhaps_showpath(filename), msg, filecrct))
 
 
-# ---------- sha1sum ----------
-
-class SHA1_MixIn(object):
-    def do_test_file(self, filename, filecrc):
-        c = getfilesha1(filename)[0]
-        if c != filecrc:
-            return c
-
-
 # Base class for md5sum/sha1sum style checksum file formats.
 class FooSum_Base(ChksumType):
     def do_test_chksumfile_print_testingline(self, file):
@@ -1332,6 +1323,23 @@ class FooSum_Base(ChksumType):
         self.test_file(x.group(3), unhexlify(x.group(1)))
 
 
+def _peeksumfile(file, _autorem):
+    l = file.peekline(4096)
+    while l:
+        if l[0] not in ';#':
+            return _autorem.match(l) is not None
+        l = file.peeknextline(4096)
+    return False
+
+# ---------- sha1sum ----------
+
+class SHA1_MixIn(object):
+    def do_test_file(self, filename, filecrc):
+        c = getfilesha1(filename)[0]
+        if c != filecrc:
+            return c
+
+
 class SHA1(FooSum_Base, SHA1_MixIn):
     description = 'GNU sha1sum'
     descinfo = 'SHA1,name'
@@ -1339,11 +1347,7 @@ class SHA1(FooSum_Base, SHA1_MixIn):
 
     @staticmethod
     def auto_chksumfile_match(file, _autorem=re.compile(r'[0-9a-fA-F]{40} [ *].')):
-        l = file.peekline(4096)
-        while l:
-            if l[0] not in ';#':
-                return _autorem.match(l) is not None
-            l = file.peeknextline(4096)
+        return _peeksumfile(file, _autorem=_autorem)
 
     auto_filename_match = 'sha1'
 
@@ -1373,11 +1377,7 @@ class MD5(FooSum_Base, MD5_MixIn):
 
     @staticmethod
     def auto_chksumfile_match(file, _autorem=re.compile(r'[0-9a-fA-F]{32} [ *].')):
-        l = file.peekline(4096)
-        while l:
-            if l[0] not in ';#':
-                return _autorem.match(l) is not None
-            l = file.peeknextline(4096)
+        return _peeksumfile(file, _autorem=_autorem)
 
     auto_filename_match = 'md5'
 
