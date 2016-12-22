@@ -120,8 +120,7 @@ def chdir(d):
 
 def cdup():
     global curdir, _path_key_cache
-    reld
-    ir.pop()
+    reldir.pop()
     curdir, _path_key_cache = prevdir.pop()
     os.chdir(curdir)
 
@@ -1851,7 +1850,7 @@ class Torrent(ChksumType):
     def make_addfile(self, filename):
         firstpiece = len(self.pieces)
         f = open(filename, 'rb')
-        if stdprogressa:
+        if stdprogress:
             progress.init(filename)
         fs = 0
         while 1:
