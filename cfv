@@ -408,6 +408,27 @@ def getfilesha1(file):
     return finfo['sha1'], finfo['size']
 
 
+def getfilesha224(file):
+    finfo = cache.getfinfo(file)
+    if not finfo.has_key('sha224'):
+        finfo['sha224'], finfo['size'] = _getfilesha224(file)
+    return finfo['sha224'], finfo['size']
+
+
+def getfilesha256(file):
+    finfo = cache.getfinfo(file)
+    if not finfo.has_key('sha512'):
+        finfo['sha512'], finfo['size'] = _getfilesha256(file)
+    return finfo['sha512'], finfo['size']
+
+
+def getfilesha512(file):
+    finfo = cache.getfinfo(file)
+    if not finfo.has_key('sha1'):
+        finfo['sha1'], finfo['size'] = _getfilesha512(file)
+    return finfo['sha1'], finfo['size']
+
+
 def getfilemd5(file):
     finfo = cache.getfinfo(file)
     if not finfo.has_key('md5'):
@@ -842,9 +863,60 @@ try:
 except ImportError:
     from md5 import new as md5_new
 
+has_sha224 = False
+has_sha256 = False
+has_sha512 = False
+
+try:
+    from hashlib import sha224
+    has_sha224 = True
+except ImportError:
+    sha224 = None
+
+try:
+    from hashlib import sha256
+    has_sha256 = True
+except ImportError:
+    sha256 = None
+
+try:
+    from hashlib import sha512
+    has_sha512 = True
+except ImportError:
+    sha512 = None
+
 
 def _getfilesha1(file):
     return _getfilechecksum(file, sha_new)
+
+
+class HashlibNoSupportedError(Exception):
+    def __init__(self, algo):
+        self.algo = algo
+
+    def __str__(self):
+        return "Hash algorythm %s not supported by hashlib." % self.algo.upper()
+
+
+def _getfilesha224(file):
+    if has_sha224 is True:
+        return _getfilechecksum(file, sha224)
+    else:
+        raise HashlibNoSupportedError('sha224')
+
+
+def _getfilesha256(file):
+    if has_sha256 is True:
+        return _getfilechecksum(file, sha256)
+    else:
+        raise HashlibNoSupportedError('sha256')
+
+
+def _getfilesha512(file):
+    if has_sha512 is True:
+        return _getfilechecksum(file, sha512)
+    else:
+        raise HashlibNoSupportedError('sha512')
 
 
 try:
@@ -1358,6 +1430,96 @@ class SHA1(FooSum_Base, SHA1_MixIn):
 
 
 register_cftype('sha1', SHA1)
+
+
+# ---------- sha224sum ----------
+
+class SHA224_MixIn(object):
+    def do_test_file(self, filename, filecrc):
+        c = getfilesha224(filename)[0]
+        if c != filecrc:
+            return c
+
+
+class SHA224(FooSum_Base, SHA224_MixIn):
+    description = 'GNU sha224sum'
+    descinfo = 'SHA224,name'
+    fileext = 'sha224'
+
+    @staticmethod
+    def auto_chksumfile_match(file, _autorem=re.compile(r'[0-9a-fA-F]{56} [ *].')):
+        return _peeksumfile(file, _autorem=_autorem)
+
+    auto_filename_match = 'sha224'
+
+    _foosum_rem = re.compile(r'([0-9a-fA-F]{56}) ([ *])([^\r\n]+)[\r\n]*$')
+
+    def make_addfile(self, filename):
+        crc = hexlify(getfilesha224(filename)[0])
+        return (crc, -1), '%s *%s\n' % (crc, filename)
+
+
+register_cftype('sha224', SHA224)
+
+
+# ---------- sha1sum ----------
+
+class SHA256_MixIn(object):
+    def do_test_file(self, filename, filecrc):
+        c = getfilesha256(filename)[0]
+        if c != filecrc:
+            return c
+
+
+class SHA256(FooSum_Base, SHA256_MixIn):
+    description = 'GNU sha256sum'
+    descinfo = 'SHA256,name'
+    fileext = 'sha256'
+
+    @staticmethod
+    def auto_chksumfile_match(file, _autorem=re.compile(r'[0-9a-fA-F]{64} [ *].')):
+        return _peeksumfile(file, _autorem=_autorem)
+
+    auto_filename_match = 'sha256'
+
+    _foosum_rem = re.compile(r'([0-9a-fA-F]{64}) ([ *])([^\r\n]+)[\r\n]*$')
+
+    def make_addfile(self, filename):
+        crc = hexlify(getfilesha256(filename)[0])
+        return (crc, -1), '%s *%s\n' % (crc, filename)
+
+
+register_cftype('sha256', SHA256)
+
+
+# ---------- sha512sum ----------
+
+class SHA512_MixIn(object):
+    def do_test_file(self, filename, filecrc):
+        c = getfilesha512(filename)[0]
+        if c != filecrc:
+            return c
+
+
+class SHA512(FooSum_Base, SHA512_MixIn):
+    description = 'GNU sha512sum'
+    descinfo = 'SHA512,name'
+    fileext = 'sha512'
+
+    @staticmethod
+    def auto_chksumfile_match(file, _autorem=re.compile(r'[0-9a-fA-F]{128} [ *].')):
+        return _peeksumfile(file, _autorem=_autorem)
+
+    auto_filename_match = 'sha512'
+
+    _foosum_rem = re.compile(r'([0-9a-fA-F]{128}) ([ *])([^\r\n]+)[\r\n]*$')
+
+    def make_addfile(self, filename):
+        crc = hexlify(getfilesha512(filename)[0])
+        return (crc, -1), '%s *%s\n' % (crc, filename)
+
+
+register_cftype('sha512', SHA512)
 
 
 # ---------- md5 ----------
@@ -2639,7 +2801,7 @@ def show_unverified_files(filelist):
 
 # md5sum/sha1sum files have no standard extension, so just search for files with md5/sha1 in the name anywhere, and let
 # the test func see if it really is one.
-atrem = re.compile(r'md5|sha1|\.(csv|sfv|par|p[0-9][0-9]|par2|torrent|crc)(\.gz)?$', re.IGNORECASE)
+atrem = re.compile(r'md5|sha(1|224|256|512)|\.(csv|sfv|par|p[0-9][0-9]|par2|torrent|crc)(\.gz)?$', re.IGNORECASE)
 
 
 def autotest(typename):
